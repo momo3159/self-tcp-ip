@@ -95,3 +95,32 @@ void *StdInThread(void *arg) {
 
     return (NULL);
 }
+
+// 終了関連のシグナルハンドラ
+int ending() {
+    struct ifreq if_req; // ioctlの引数に渡される. 
+    
+    printf("ending\n");
+
+    if (DeviceSoc != -1) {
+        // https://wireless-network.net/interface-flags-viewer/
+        strcpy(if_req.ifr_name, Param.device);
+        if (ioctl(DeviceSoc, SIOCGIFFLAGS, &if_req) < 0) { // デバイスドライバの制御を行うための関数. 制御内容は第二引数で指定. 
+            // 今回はデバイスの active フラグワードを取得
+            perror("ioctl");
+        }
+
+
+        // プロミスキャスモード（https://e-words.jp/w/%E3%83%97%E3%83%AD%E3%83%9F%E3%82%B9%E3%82%AD%E3%83%A3%E3%82%B9%E3%83%A2%E3%83%BC%E3%83%89.html）を終了する. 
+        if_req.ifr_flags = if_req.ifr_flags & ~IFF_PROMISC;
+        // フラグワードを設定する
+        if(ioctl(DeviceSoc, SIOCSIFFLAGS, &if_req) < 0) {
+            perror("ioctl");
+        }
+
+        close(DeviceSoc);
+        DeviceSoc = -1;
+    }
+
+    return 0;
+}
