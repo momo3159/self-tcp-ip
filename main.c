@@ -48,16 +48,50 @@ void *MyEthThread(void *arg) {
             case 0:
                 break;
             default:
-                if(targets[0].revents & (POLLIN | POLERR)) {
+                if(targets[0].revents & POLLIN) {
                     if ((len=read(DeviceSoc, buf, sizeof(buf)))<=0) {
                         perror("read")
                     } else {
                         EtherRecv(DeviceSoc, buf, len);
                     }
+                } else if (targets[0].revents & POLLERR) {
+                    perror("POLLERR")
                 }
-                break;
 
+                break;
         }
     }
     return (NULL)
+}
+
+// コマンド入力を受け付けるスレッド
+void *StdInThread(void *arg) {
+    int nready;
+    struct pollfd targets[1];
+    char buf[2048];
+
+    targets[0].fd = fileno(stdin);
+    targets[0].events = POLLIN | POLLERR;
+
+    while(EndFlag == 0) {
+        switch ((nready = poll(targets, 1, 1000))) {
+            case -1:
+                if (errno != EINTR) {
+                    perror("poll");
+                }
+                break;
+            case 0:
+                break;
+            default:
+                if (targets[0].revents & POLLIN) {
+                    fgets(buf, sizeof(buf), stdin); // ファイルから一行を取得する関数（第三引数でstdinを指定すると標準入力から読み取る）
+                    DoCmd(buf);
+                } else if (targets[0].revents & POLLERR) {
+                    perror("POLLERR")
+                }
+                break;
+        }
+    }
+
+    return (NULL);
 }
